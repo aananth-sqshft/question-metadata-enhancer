@@ -128,26 +128,43 @@ QUESTION TEXT:
 EXISTING METADATA:
 {metadata_str}
 
+Return your analysis in the following JSON format:
 Please generate the following additional metadata:
-1. Question type (multiple choice, short answer, calculation, essay, etc.)
-2. Difficulty level (easy, medium, hard)
+1. Question type (multiple choice, short answer, fill in the blanks, open ended, calculation, essay, etc.)
+2. Difficulty level (easy, medium, hard, very hard)
 3. Keywords or key concepts (comma-separated)
-4. Cognitive skills required (recall, understanding, application, analysis, evaluation, creation)
+4. Cognitive skills required (recall, understanding, application, analysis, evaluation, creation etc)
 5. Detailed topic classification with subtopics
-6. A cleaned and properly formatted version of the question text
+6. A cleaned and properly formatted version of the question text and answer choices (for multiple choice) with your answer and your confidence in the answer
 
 Return your analysis in the following JSON format:
 ```json
 {{
-  "question_type": "string",
-  "difficulty_level": "string",
-  "keywords": ["string"],
-  "cognitive_skills": ["string"],
-  "topic_classification": {{
-    "main_topic": "string",
-    "subtopics": ["string"]
-  }},
-  "cleaned_text": "string"
+  "question_type": "string (e.g., 'multiple_choice', 'true_false', 'open_ended', 'fill_in_the_blank', 'other')",
+  "difficulty_level": "string (e.g., 'easy', 'medium', 'hard')",
+  "keywords": ["string (e.g., 'keyword1')", "string (e.g., 'keyword2')", "string (e.g., 'keyword3')"],
+  "cognitive_skills": ["string (e.g., 'recall')", "string (e.g., 'understanding')", "string (e.g., 'application')"],
+  "topic_classification": {{
+    "main_topic": "string (e.g., 'Science')",
+    "subtopics": ["string (e.g., 'Biology')", "string (e.g., 'Cellular Biology')"]
+  }},
+  "cleaned_text": "string (The rephrased and formatted question text)",
+  "answer": "string (For multiple choice, the letter of the correct answer.  For other types, the full answer text.)",
+  "choices": [
+    {{
+      "letter": "string (e.g., 'A')",
+      "text": "string (Text of choice A)"
+    }},
+    {{
+      "letter": "string (e.g., 'B')",
+      "text": "string (Text of choice B)"
+    }},
+    {{
+      "letter": "string (e.g., 'C')",
+      "text": "string (Text of choice C)"
+    }}
+  ],
+  "answer_confidence": "number (between 0 and 1, e.g., 0.95)"
 }}
 ```
 

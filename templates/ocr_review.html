@@ -202,12 +202,26 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/ocr_review.js') }}"></script>
 <script>
+    // Set the filename from the server-side template
+    const filename = '{{ filename }}';
+    
     document.addEventListener('DOMContentLoaded', function() {
-        const filename = '{{ filename }}';
-        let currentOcrText = '';
-        let existingMetadata = null;
-        let enhancedMetadata = null;
+        // Find and initialize the Bootstrap modal directly (as a backup to the JS file)
+        if (typeof bootstrap !== 'undefined') {
+            window.promptModal = new bootstrap.Modal(document.getElementById('promptModal'));
+            
+            // Directly attach the click handler to the button
+            document.getElementById('viewPromptBtn').onclick = function() {
+                if (typeof window.loadPrompt === 'function') {
+                    window.loadPrompt();
+                } else {
+                    console.error('loadPrompt function not found');
+                    alert('Error: Could not load prompt. See console for details.');
+                }
+            };
+        }
         
         // Load OCR results and metadata
         loadOcrResult();

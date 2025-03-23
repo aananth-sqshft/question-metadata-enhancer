@@ -1,18 +1,28 @@
-// static/js/ocr-review.js
+// static/js/ocr_review.js
 
+// Global variables
+let currentOcrText = '';
+let existingMetadata = null;
+let enhancedMetadata = null;
+let currentPrompt = '';
+let customPrompt = null;
+
+// Initialize after DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    // Get filename from URL path
-    const pathParts = window.location.pathname.split('/');
-    const filename = pathParts[pathParts.length - 1];
+    // If filename is not defined by the template, try to get it from URL
+    if (typeof filename === 'undefined') {
+        const pathParts = window.location.pathname.split('/');
+        window.filename = pathParts[pathParts.length - 1];
+    }
     
-    let currentOcrText = '';
-    let existingMetadata = null;
-    let enhancedMetadata = null;
-    let currentPrompt = '';
-    let customPrompt = null;
-    
-    // Initialize Bootstrap modal
-    const promptModal = new bootstrap.Modal(document.getElementById('promptModal'));
+    // Initialize Bootstrap modal if not already done
+    if (typeof window.promptModal === 'undefined') {
+        try {
+            window.promptModal = new bootstrap.Modal(document.getElementById('promptModal'));
+        } catch (e) {
+            console.error('Failed to initialize prompt modal:', e);
+        }
+    }
     
     // Load OCR results and metadata
     loadOcrResult();
@@ -33,12 +43,16 @@ document.addEventListener('DOMContentLoaded', function() {
     
     document.getElementById('savePromptBtn').addEventListener('click', function() {
         customPrompt = document.getElementById('llmPrompt').value;
-        promptModal.hide();
+        if (window.promptModal) {
+            window.promptModal.hide();
+        }
     });
     
     document.getElementById('analyzeWithCustomPromptBtn').addEventListener('click', function() {
         customPrompt = document.getElementById('llmPrompt').value;
-        promptModal.hide();
+        if (window.promptModal) {
+            window.promptModal.hide();
+        }
         submitForAnalysis(true); // Pass true to use custom prompt
     });
     
@@ -172,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Load the LLM prompt for preview/editing
-    function loadPrompt() {
+    window.loadPrompt = function() {
         const ocrText = document.getElementById('ocrText').value.trim();
         
         if (!ocrText) {
@@ -183,14 +197,14 @@ document.addEventListener('DOMContentLoaded', function() {
         // If we already have a custom prompt, just show it
         if (customPrompt) {
             document.getElementById('llmPrompt').value = customPrompt;
-            promptModal.show();
+            window.promptModal.show();
             return;
         }
         
         // Show loading in the textarea
         const promptTextarea = document.getElementById('llmPrompt');
         promptTextarea.value = 'Loading prompt...';
-        promptModal.show();
+        window.promptModal.show();
         
         // Get the prompt from the backend
         fetch('/llm/prompt', {
