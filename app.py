@@ -48,9 +48,26 @@ metadata_manager = MetadataManager(METADATA_FILE)
 @app.route('/')
 def index():
     """Main dashboard page"""
-    image_list = ocr_processor.get_image_list()
-    print(f"[DEBUG] Image list from OCR processor: {image_list}")
-    return render_template('dashboard.html', images=image_list, question_folder=QUESTION_FOLDER)
+    # Get all available images from the OCR processor
+    all_images = ocr_processor.get_image_list()
+    
+    # Get images explicitly marked as completed
+    completed_review = metadata_manager.get_completed_review_list()
+    
+    # Filter to only include completed images that actually exist in the image folder
+    completed_images = [img for img in completed_review if img in all_images]
+    
+    # All images not in the completed list are considered pending
+    pending_images = [img for img in all_images if img not in completed_images]
+    
+    print(f"[DEBUG] All images: {len(all_images)}, Pending: {len(pending_images)}, Completed: {len(completed_images)}")
+    
+    return render_template(
+        'dashboard.html', 
+        pending_images=pending_images, 
+        completed_images=completed_images,
+        question_folder=QUESTION_FOLDER
+    )
 
 
 @app.route('/debug')
@@ -273,13 +290,32 @@ def metadata_view(filename):
     # Determine if the question has been processed
     processed = ocr_result.get('success', False)
     
+    # Check if review is completed
+    review_completed = metadata.get('review_completed', False) if metadata else False
+    
     return render_template(
         'metadata_view.html', 
         filename=filename, 
         ocr_result=ocr_result, 
         metadata=metadata, 
-        processed=processed
+        processed=processed,
+        review_completed=review_completed
     )
+
+@app.route('/review/toggle/<filename>', methods=['POST'])
+def toggle_review_completion(filename):
+    """Toggle the review completion status for a question"""
+    data = request.get_json()
+    completed = data.get('completed', True)
+    
+    # Update the review status
+    success = metadata_manager.mark_review_completed(filename, completed)
+    
+    return jsonify({
+        'success': success,
+        'filename': filename,
+        'review_completed': completed
+    })
 
 @app.route('/test-css')
 def test_css():

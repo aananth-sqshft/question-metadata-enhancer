@@ -109,6 +109,102 @@ class MetadataManager:
         
         # Save the updated metadata
         return self._save_metadata(metadata_list)
+        
+    def mark_review_completed(self, image_filename, completed=True):
+        """
+        Mark a question as having completed review.
+        
+        Args:
+            image_filename (str): Filename of the question image
+            completed (bool): Whether the review is completed (True) or not (False)
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        # Create a backup before modifying
+        self._create_backup()
+        
+        metadata_list = self.read_metadata()
+        updated = False
+        
+        for entry in metadata_list:
+            if entry.get('filename') == image_filename:
+                # Set the review_completed status
+                entry['review_completed'] = completed
+                
+                # Add a timestamp for the review completion
+                if completed:
+                    entry['review_completed_at'] = datetime.datetime.now().isoformat()
+                else:
+                    # Remove the timestamp if unmarking as completed
+                    entry.pop('review_completed_at', None)
+                
+                # Update the last_updated timestamp
+                entry['last_updated'] = datetime.datetime.now().isoformat()
+                updated = True
+                break
+        
+        if not updated:
+            # Create a new entry if none exists
+            logger.info(f"Creating new metadata entry for {image_filename} with review status")
+            new_entry = {
+                'filename': image_filename,
+                'review_completed': completed,
+                'created': datetime.datetime.now().isoformat(),
+                'last_updated': datetime.datetime.now().isoformat()
+            }
+            
+            if completed:
+                new_entry['review_completed_at'] = new_entry['last_updated']
+                
+            metadata_list.append(new_entry)
+            updated = True
+        
+        # Save the updated metadata
+        return self._save_metadata(metadata_list)
+        
+    def get_review_status_lists(self):
+        """
+        Get separate lists of filenames based on review completion status.
+        
+        Returns:
+            tuple: (pending_review, completed_review) lists of filenames
+        """
+        metadata_list = self.read_metadata()
+        pending_review = []
+        completed_review = []
+        
+        for entry in metadata_list:
+            filename = entry.get('filename')
+            if not filename:
+                continue
+                
+            if entry.get('review_completed', False):
+                completed_review.append(filename)
+            else:
+                pending_review.append(filename)
+                
+        return pending_review, completed_review
+        
+    def get_completed_review_list(self):
+        """
+        Get a list of filenames that have been marked as review completed.
+        
+        Returns:
+            list: List of filenames with completed review
+        """
+        metadata_list = self.read_metadata()
+        completed_review = []
+        
+        for entry in metadata_list:
+            filename = entry.get('filename')
+            if not filename:
+                continue
+                
+            if entry.get('review_completed', False):
+                completed_review.append(filename)
+                
+        return completed_review
     
     def update_batch_metadata(self, updates):
         """

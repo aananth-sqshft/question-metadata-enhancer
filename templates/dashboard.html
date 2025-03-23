@@ -86,16 +86,16 @@
             <div class="card-body">
                 <div class="row text-center">
                     <div class="col">
-                        <h2 id="totalQuestions">{{ images|length }}</h2>
+                        <h2 id="totalQuestions">{{ pending_images|length + completed_images|length }}</h2>
                         <p>Total Questions</p>
                     </div>
                     <div class="col">
-                        <h2 id="processedQuestions">0</h2>
-                        <p>Processed</p>
+                        <h2 id="pendingQuestions">{{ pending_images|length }}</h2>
+                        <p>In Queue</p>
                     </div>
                     <div class="col">
-                        <h2 id="pendingQuestions">{{ images|length }}</h2>
-                        <p>Pending</p>
+                        <h2 id="completedQuestions">{{ completed_images|length }}</h2>
+                        <p>Completed</p>
                     </div>
                 </div>
             </div>
@@ -133,9 +133,9 @@
         </div>
     </div>
     <div class="card-body">
-        {% if images %}
+        {% if pending_images %}
             <div class="table-responsive">
-                <table class="table table-hover">
+                <table id="pending-questions-table" class="table table-hover">
                     <thead>
                         <tr>
                             <th style="width: 50px;"></th>
@@ -146,7 +146,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for image in images %}
+                        {% for image in pending_images %}
                         <tr data-filename="{{ image }}">
                             <td>
                                 <div class="form-check">
@@ -173,6 +173,9 @@
                                     <a href="/metadata/view/{{ image }}" class="btn btn-sm btn-outline-secondary view-metadata-btn">
                                         View Details
                                     </a>
+                                    <button class="btn btn-sm btn-outline-success mark-complete-btn" data-filename="{{ image }}">
+                                        Mark Finished
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -182,7 +185,60 @@
             </div>
         {% else %}
             <div class="alert alert-info">
-                No question images found. Use the Question Extractor tool to create question images first.
+                No pending question images found. All images have been reviewed or no images have been uploaded yet.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Finished Review Section -->
+<div class="card mt-4">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Finished Review</h5>
+        <span class="badge bg-light text-dark">{{ completed_images|length }} items</span>
+    </div>
+    <div class="card-body">
+        {% if completed_images %}
+            <div class="table-responsive">
+                <table id="completed-questions-table" class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">Preview</th>
+                            <th>Filename</th>
+                            <th>Completed On</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for image in completed_images %}
+                        <tr data-filename="{{ image }}">
+                            <td>
+                                <img src="/images/{{ image }}" class="img-thumbnail question-image-preview" 
+                                     alt="{{ image }}" style="max-height: 60px; cursor: pointer;" 
+                                     data-filename="{{ image }}">
+                            </td>
+                            <td>{{ image }}</td>
+                            <td>
+                                <span class="completed-date">-</span>
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="/metadata/view/{{ image }}" class="btn btn-sm btn-outline-secondary">
+                                        View Details
+                                    </a>
+                                    <button class="btn btn-sm btn-outline-danger unmark-complete-btn" data-filename="{{ image }}">
+                                        Return to Queue
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                No completed reviews yet.
             </div>
         {% endif %}
     </div>
@@ -241,6 +297,70 @@
             const selectedFilenames = Array.from(document.querySelectorAll('.question-select:checked'))
                 .map(checkbox => checkbox.value);
             processBatch(selectedFilenames);
+        });
+        
+        // Mark as completed buttons
+        document.querySelectorAll('.mark-complete-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const filename = this.getAttribute('data-filename');
+                markReviewCompleted(filename, true);
+            });
+        });
+        
+        // Return to queue buttons
+        document.querySelectorAll('.unmark-complete-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const filename = this.getAttribute('data-filename');
+                markReviewCompleted(filename, false);
+            });
+        });
+        
+        // Function to mark review as completed or return to queue
+        function markReviewCompleted(filename, completed) {
+            fetch(`/review/toggle/${filename}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ completed: completed })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reload the page to update the lists
+                    window.location.reload();
+                } else {
+                    alert('Failed to update review status');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating review status:', error);
+                alert('Network error while updating review status');
+            });
+        }
+        
+        // Load completion dates for finished items
+        document.querySelectorAll('.completed-date').forEach(dateSpan => {
+            const row = dateSpan.closest('tr');
+            if (!row) return;
+            
+            const filename = row.getAttribute('data-filename');
+            if (!filename) return;
+            
+            // Get metadata to find completion date
+            fetch(`/ocr/result/${filename}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.metadata && data.metadata.review_completed_at) {
+                        // Format the date nicely
+                        const completedDate = new Date(data.metadata.review_completed_at);
+                        dateSpan.textContent = completedDate.toLocaleDateString() + ' ' + 
+                                              completedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    }
+                })
+                .catch(error => {
+                    console.error(`Error loading metadata for ${filename}:`, error);
+                });
         });
         
         function processQuestion(filename) {
@@ -318,6 +438,7 @@
             if (!row) return;
             
             const statusBadge = row.querySelector('.status-badge');
+            if (!statusBadge) return;
             
             statusBadge.classList.remove('bg-secondary', 'bg-warning', 'bg-success', 'bg-danger');
             
@@ -348,19 +469,22 @@
             const processBtn = row.querySelector('.process-btn');
             const reviewBtn = row.querySelector('.review-btn');
             
-            processBtn.classList.add('btn-outline-secondary');
-            processBtn.classList.remove('btn-outline-primary');
-            reviewBtn.style.display = 'inline-block';
+            if (processBtn && reviewBtn) {
+                processBtn.classList.add('btn-outline-secondary');
+                processBtn.classList.remove('btn-outline-primary');
+                reviewBtn.style.display = 'inline-block';
+            }
         }
         
         function updateStatistics() {
-            const totalQuestions = document.querySelectorAll('tr[data-filename]').length;
-            const processedQuestions = document.querySelectorAll('.status-badge.bg-success').length;
-            const pendingQuestions = totalQuestions - processedQuestions;
+            // Count all questions from both tables
+            const pendingRows = document.querySelectorAll('#pending-questions-table tr[data-filename]').length;
+            const completedRows = document.querySelectorAll('#completed-questions-table tr[data-filename]').length;
+            const totalQuestions = pendingRows + completedRows;
             
             document.getElementById('totalQuestions').textContent = totalQuestions;
-            document.getElementById('processedQuestions').textContent = processedQuestions;
-            document.getElementById('pendingQuestions').textContent = pendingQuestions;
+            document.getElementById('pendingQuestions').textContent = pendingRows;
+            document.getElementById('completedQuestions').textContent = completedRows;
         }
         
         // Initialize statistics

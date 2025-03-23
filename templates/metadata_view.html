@@ -36,9 +36,15 @@
                     {% endif %}
                     
                     {% if metadata and metadata|length > 1 %}
-                    <span class="badge bg-info">Metadata Available</span>
+                    <span class="badge bg-info me-2">Metadata Available</span>
                     {% else %}
-                    <span class="badge bg-warning">No Metadata</span>
+                    <span class="badge bg-warning me-2">No Metadata</span>
+                    {% endif %}
+                    
+                    {% if review_completed %}
+                    <span class="badge bg-success review-status-badge" data-status="completed">Review Completed</span>
+                    {% else %}
+                    <span class="badge bg-warning review-status-badge" data-status="pending">Review Pending</span>
                     {% endif %}
                 </div>
             </div>
@@ -70,6 +76,16 @@
                     <a href="/metadata/review/{{ filename }}" class="btn btn-secondary">
                         <i class="bi bi-pencil"></i> Edit Metadata
                     </a>
+                    {% endif %}
+                    
+                    {% if review_completed %}
+                    <button id="toggleReviewBtn" class="btn btn-warning" data-completed="true">
+                        <i class="bi bi-arrow-return-left"></i> Return to Review Queue
+                    </button>
+                    {% else %}
+                    <button id="toggleReviewBtn" class="btn btn-success" data-completed="false">
+                        <i class="bi bi-check-circle"></i> Mark Review as Completed
+                    </button>
                     {% endif %}
                     
                     <a href="/" class="btn btn-outline-secondary">
@@ -278,6 +294,47 @@
                     processingModal.hide();
                     console.error('Error reprocessing image:', error);
                     alert('Network error while reprocessing image');
+                });
+            });
+        }
+        
+        // Toggle review status button
+        const toggleReviewBtn = document.getElementById('toggleReviewBtn');
+        if (toggleReviewBtn) {
+            toggleReviewBtn.addEventListener('click', function() {
+                const isCompleted = this.getAttribute('data-completed') === 'true';
+                const newStatus = !isCompleted;
+                
+                // Show processing modal
+                document.getElementById('processingMessage').textContent = newStatus ? 
+                    'Marking review as completed...' : 'Returning question to review queue...';
+                processingModal.show();
+                
+                // Call the review toggle API
+                fetch(`/review/toggle/${filename}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        completed: newStatus
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    processingModal.hide();
+                    
+                    if (data.success) {
+                        // Reload page to show updated content
+                        window.location.reload();
+                    } else {
+                        alert('Error updating review status: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    processingModal.hide();
+                    console.error('Error updating review status:', error);
+                    alert('Network error while updating review status');
                 });
             });
         }
