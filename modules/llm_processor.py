@@ -205,8 +205,11 @@ Do not include any other text in your response - only the JSON.
         if ANTHROPIC_SDK_AVAILABLE:
             try:
                 client = anthropic.Anthropic(api_key=self.api_key)
+                # Set client timeout to prevent hanging
+                client.timeout = 30
+                # If the anthropic-sdk version is 0.16.0, Claude 2 should work
                 message = client.messages.create(
-                    model="claude-3-opus-20240229",  # Or other available Claude models
+                    model="claude-2",  # Using a model compatible with our SDK version
                     max_tokens=1000,
                     temperature=0.3,
                     system="You are an expert in educational assessment and metadata generation.",
@@ -239,23 +242,25 @@ Do not include any other text in your response - only the JSON.
         headers = {
             "Content-Type": "application/json",
             "x-api-key": self.api_key,
-            "anthropic-version": "2023-12-15"
+            "anthropic-version": "2023-06-01"  # Using a compatible version with our SDK
         }
         
-        data = {
-            "model": "claude-3-opus-20240229",  # Or other available Claude models
-            "max_tokens": 1000,
-            "temperature": 0.3,
-            "messages": [
-                {"role": "user", "content": prompt}
-            ]
-        }
+        # This data object is not used anymore - we pass the params directly to the API call
+        data = {}
+        # Now using the correct structure for the API call below
         
         try:
+            # Revert to using the completions endpoint for Claude 2 which worked with API v2023-06-01
             response = requests.post(
-                "https://api.anthropic.com/v1/messages",
+                "https://api.anthropic.com/v1/complete",
                 headers=headers,
-                json=data
+                json={
+                    "model": "claude-2",
+                    "max_tokens_to_sample": 1000,
+                    "temperature": 0.3,
+                    "prompt": f"\n\nHuman: {prompt}\n\nAssistant:"
+                },
+                timeout=30  # Add a 30 second timeout to prevent hanging
             )
             
             # Check for non-JSON responses (like HTML error pages)
@@ -268,8 +273,16 @@ Do not include any other text in your response - only the JSON.
                 raise Exception(f"Anthropic API error: {error_content}")
             
             result = response.json()
-            return result["content"][0]["text"]
+            # Extract completion from the complete endpoint response
+            return result.get("completion", "")
+        except requests.exceptions.Timeout:
+            logger.error("Anthropic API request timed out after 30 seconds")
+            raise Exception("Connection timeout: The API request took too long to complete. Please try again later.")
+        except requests.exceptions.ConnectionError:
+            logger.error("Connection error when calling Anthropic API")
+            raise Exception("Connection error: Could not connect to the Anthropic API. Please check your internet connection.")
         except requests.exceptions.RequestException as e:
+            logger.error(f"API request failed: {str(e)}")
             raise Exception(f"API request failed: {str(e)}")
     
     def _parse_response(self, response):
