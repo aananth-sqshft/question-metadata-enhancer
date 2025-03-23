@@ -9,11 +9,11 @@ load_dotenv()
 DEBUG = True
 
 # Path configuration
-QUESTION_FOLDER = 'question_images'  # Path to snipped question images
-METADATA_FILE = 'question_metadata.json'  # Path to metadata file
+QUESTION_FOLDER = os.getenv('QUESTION_FOLDER')  # Path to snipped question images
+METADATA_FILE = os.getenv('METADATA_FILE')  # Path to metadata file
 
 # LLM API Configuration
-LLM_API_TYPE = 'openai'  # or 'anthropic'
+LLM_API_TYPE = 'anthropic'  # or 'openai'
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
 

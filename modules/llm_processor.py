@@ -4,6 +4,14 @@ import json
 import logging
 import requests
 from dotenv import load_dotenv
+from distutils.version import StrictVersion
+
+# Conditionally import anthropic SDK if available
+try:
+    import anthropic
+    ANTHROPIC_SDK_AVAILABLE = True
+except ImportError:
+    ANTHROPIC_SDK_AVAILABLE = False
 
 # Load environment variables from .env file
 load_dotenv()
@@ -182,10 +190,29 @@ Do not include any other text in your response - only the JSON.
         Returns:
             str: LLM response
         """
+        # Use SDK if available, otherwise fall back to direct API calls
+        if ANTHROPIC_SDK_AVAILABLE:
+            try:
+                client = anthropic.Anthropic(api_key=self.api_key)
+                message = client.messages.create(
+                    model="claude-3-opus-20240229",  # Or other available Claude models
+                    max_tokens=1000,
+                    temperature=0.3,
+                    messages=[
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                return message.content[0].text
+            except Exception as e:
+                logger.error(f"Anthropic SDK error: {str(e)}")
+                logger.info("Falling back to direct API call")
+                # Fall back to direct API call
+        
+        # Direct API call implementation
         headers = {
             "Content-Type": "application/json",
             "x-api-key": self.api_key,
-            "anthropic-version": "2023-06-01"
+            "anthropic-version": "2023-12-15"
         }
         
         data = {
@@ -197,18 +224,26 @@ Do not include any other text in your response - only the JSON.
             ]
         }
         
-        response = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers=headers,
-            json=data
-        )
-        
-        if response.status_code != 200:
-            error_content = response.json()
-            raise Exception(f"Anthropic API error: {error_content}")
-        
-        result = response.json()
-        return result["content"][0]["text"]
+        try:
+            response = requests.post(
+                "https://api.anthropic.com/v1/messages",
+                headers=headers,
+                json=data
+            )
+            
+            # Check for non-JSON responses (like HTML error pages)
+            content_type = response.headers.get('Content-Type', '')
+            if 'application/json' not in content_type.lower():
+                raise Exception(f"Unexpected response type: {content_type}. This may indicate an authentication issue or network problem.")
+            
+            if response.status_code != 200:
+                error_content = response.json() if 'application/json' in content_type.lower() else response.text
+                raise Exception(f"Anthropic API error: {error_content}")
+            
+            result = response.json()
+            return result["content"][0]["text"]
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"API request failed: {str(e)}")
     
     def _parse_response(self, response):
         """
@@ -221,6 +256,17 @@ Do not include any other text in your response - only the JSON.
             dict: Structured metadata
         """
         try:
+            # Check if response is None or empty
+            if not response:
+                raise ValueError("Empty response received from LLM")
+                
+            # Check if response might be HTML (indicating an error page)
+            if response.strip().startswith('<'):
+                error_msg = "Received HTML response instead of JSON. This likely indicates an API authentication error or rate limit issue."
+                logger.error(error_msg)
+                logger.debug(f"HTML response received: {response[:200]}...")
+                return {'error': error_msg, 'raw_response': response[:500]}
+            
             # Extract JSON from the response - assuming the response is JSON or contains JSON
             json_content = response.strip()
             
@@ -239,5 +285,10 @@ Do not include any other text in your response - only the JSON.
             logger.error(error_msg)
             logger.debug(f"Problematic response: {response}")
             return {'error': error_msg, 'raw_response': response}
+        except Exception as e:
+            error_msg = f"Error processing LLM response: {str(e)}"
+            logger.error(error_msg)
+            logger.debug(f"Problematic response: {response}")
+            return {'error': error_msg, 'raw_response': str(response)[:500] if response else 'None'}
         
         

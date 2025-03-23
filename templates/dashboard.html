@@ -4,6 +4,29 @@
 {% block title %}Dashboard - Question Metadata Enhancer{% endblock %}
 
 {% block content %}
+<!-- Add this right after the main heading, before your Actions card -->
+<div class="row mb-4">
+    <div class="col">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="card-title mb-0">Debug Information</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Question Folder Path:</strong> {{ question_folder }}</p>
+                <p><strong>Number of images found:</strong> {{ images|length }}</p>
+                <p><strong>Image URL format:</strong> /images/[filename]</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modify the img src in your table row to print the full path: -->
+<!-- Find this line in your table: -->
+<!-- <img src="/images/{{ image }}" class="img-thumbnail" alt="{{ image }}" style="max-height: 60px;"> -->
+<!-- And add the debug title attribute: -->
+<img src="/images/{{ image }}" class="img-thumbnail" alt="{{ image }}" 
+     style="max-height: 60px;" title="Loading from: {{ question_folder }}/{{ image }}">
+     
 <div class="row mb-4">
     <div class="col">
         <h1>Question Analysis Dashboard</h1>

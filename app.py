@@ -4,13 +4,20 @@ import json
 import logging
 from flask import Flask, render_template, request, jsonify, send_from_directory
 # Import config
-from config import QUESTION_FOLDER, METADATA_FILE, LLM_API_TYPE, DEBUG
+from config import QUESTION_FOLDER, METADATA_FILE, LLM_API_TYPE, DEBUG, ANTHROPIC_API_KEY
 
 
 # Import modules
 from modules.ocr_processor import OCRProcessor
 from modules.llm_processor import LLMProcessor
 from modules.metadata_manager import MetadataManager
+
+# Add this near the top of your app.py after loading configuration
+print(f"[DEBUG] QUESTION_FOLDER value: '{QUESTION_FOLDER}'")
+print(f"[DEBUG] QUESTION_FOLDER from env: '{os.getenv('QUESTION_FOLDER')}'")
+print(f"[DEBUG] Directory exists: {os.path.exists(QUESTION_FOLDER)}")
+if os.path.exists(QUESTION_FOLDER):
+    print(f"[DEBUG] Files in directory: {os.listdir(QUESTION_FOLDER)}")
 
 # Configure logging
 logging.basicConfig(
@@ -20,12 +27,17 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize Flask app
-app = Flask(__name__)
+app = Flask(__name__, 
+            static_folder=os.path.abspath('static'),
+            static_url_path='/static')
+
+logger.info(f"Created directory: {QUESTION_FOLDER}")
 
 # Ensure directories exist
 if not os.path.exists(QUESTION_FOLDER):
     os.makedirs(QUESTION_FOLDER)
     logger.info(f"Created directory: {QUESTION_FOLDER}")
+
 
 # Initialize components
 ocr_processor = OCRProcessor(QUESTION_FOLDER)
@@ -37,7 +49,30 @@ metadata_manager = MetadataManager(METADATA_FILE)
 def index():
     """Main dashboard page"""
     image_list = ocr_processor.get_image_list()
-    return render_template('dashboard.html', images=image_list)
+    print(f"[DEBUG] Image list from OCR processor: {image_list}")
+    return render_template('dashboard.html', images=image_list, question_folder=QUESTION_FOLDER)
+
+
+@app.route('/debug')
+def debug_info():
+    """Debug endpoint to see configuration and files"""
+    # Get OCR processor's image list
+    image_list = ocr_processor.get_image_list()
+    
+    # Check if we can access the files directly
+    direct_files = []
+    if os.path.exists(QUESTION_FOLDER):
+        direct_files = os.listdir(QUESTION_FOLDER)
+    
+    return jsonify({
+        'question_folder': QUESTION_FOLDER,
+        'folder_exists': os.path.exists(QUESTION_FOLDER),
+        'env_question_folder': os.getenv('QUESTION_FOLDER'),
+        'ocr_processor_image_list': image_list,
+        'direct_files_in_folder': direct_files,
+        'all_env_vars': {k: v for k, v in os.environ.items() if 'FOLDER' in k or 'FILE' in k or 'PATH' in k}
+    })
+
 
 @app.route('/images')
 def list_images():
@@ -48,6 +83,18 @@ def list_images():
 @app.route('/images/<filename>')
 def serve_image(filename):
     """Serve a question image"""
+    print(f"[DEBUG] Serving image: {filename} from folder: {QUESTION_FOLDER}")
+    # For security, validate the filename doesn't contain path traversal
+    if '..' in filename or filename.startswith('/'):
+        return "Invalid filename", 400
+        
+    # Check if the file exists before trying to serve it
+    full_path = os.path.join(QUESTION_FOLDER, filename)
+    if not os.path.exists(full_path):
+        print(f"[DEBUG] Image file not found: {full_path}")
+        return "Image not found", 404
+        
+    print(f"[DEBUG] Serving image from: {full_path}")
     return send_from_directory(QUESTION_FOLDER, filename)
 
 @app.route('/ocr/process', methods=['POST'])
@@ -168,6 +215,11 @@ def ocr_review(filename):
 def metadata_review(filename):
     """Page for reviewing enhanced metadata"""
     return render_template('metadata_review.html', filename=filename)
+
+@app.route('/test-css')
+def test_css():
+    return send_from_directory('static/css', 'main.css')
+
 
 if __name__ == '__main__':
     app.run(debug=DEBUG, host='0.0.0.0', port=5001)  # Different port from extractor
