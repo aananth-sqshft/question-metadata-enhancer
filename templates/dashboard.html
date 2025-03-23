@@ -3,6 +3,32 @@
 
 {% block title %}Dashboard - Question Metadata Enhancer{% endblock %}
 
+{% block styles %}
+<style>
+    /* Image preview hover effect */
+    .question-image-preview {
+        transition: transform 0.2s;
+    }
+    .question-image-preview:hover {
+        transform: scale(1.1);
+        box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+    
+    /* Modal image styles */
+    #modalImage {
+        max-height: 80vh;
+        object-fit: contain;
+    }
+    
+    /* Improve modal appearance on mobile */
+    @media (max-width: 768px) {
+        .modal-dialog {
+            margin: 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <!-- Add this right after the main heading, before your Actions card -->
 <div class="row mb-4">
@@ -85,6 +111,26 @@
             <label class="form-check-label text-white" for="toggleSelectAll">Select All</label>
         </div>
     </div>
+    
+    <!-- Image Modal -->
+    <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="imageModalLabel">Question Image</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img id="modalImage" src="" class="img-fluid" alt="Question Image">
+                </div>
+                <div class="modal-footer">
+                    <span id="modalFilename" class="me-auto text-muted"></span>
+                    <a id="modalReviewLink" href="#" class="btn btn-primary">Review OCR</a>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="card-body">
         {% if images %}
             <div class="table-responsive">
@@ -107,7 +153,9 @@
                                 </div>
                             </td>
                             <td>
-                                <img src="/images/{{ image }}" class="img-thumbnail" alt="{{ image }}" style="max-height: 60px;">
+                                <img src="/images/{{ image }}" class="img-thumbnail question-image-preview" 
+                                     alt="{{ image }}" style="max-height: 60px; cursor: pointer;" 
+                                     data-filename="{{ image }}">
                             </td>
                             <td>{{ image }}</td>
                             <td>
@@ -313,6 +361,28 @@
         
         // Initialize statistics
         updateStatistics();
+        
+        // Image modal functionality
+        const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+        const modalImage = document.getElementById('modalImage');
+        const modalFilename = document.getElementById('modalFilename');
+        const modalReviewLink = document.getElementById('modalReviewLink');
+        
+        // Add click event to all question image previews
+        document.querySelectorAll('.question-image-preview').forEach(img => {
+            img.addEventListener('click', function() {
+                const filename = this.getAttribute('data-filename');
+                const imageSrc = `/images/${filename}`;
+                
+                // Set modal content
+                modalImage.src = imageSrc;
+                modalFilename.textContent = filename;
+                modalReviewLink.href = `/ocr/review/${filename}`;
+                
+                // Show modal
+                imageModal.show();
+            });
+        });
     });
 </script>
 {% endblock %}
