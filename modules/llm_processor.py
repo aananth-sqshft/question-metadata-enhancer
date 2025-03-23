@@ -127,17 +127,17 @@ Please generate the following additional metadata:
 
 Return your analysis in the following JSON format:
 ```json
-{
+{{
   "question_type": "string",
   "difficulty_level": "string",
   "keywords": ["string"],
   "cognitive_skills": ["string"],
-  "topic_classification": {
+  "topic_classification": {{
     "main_topic": "string",
     "subtopics": ["string"]
-  },
+  }},
   "cleaned_text": "string"
-}
+}}
 ```
 
 Do not include any other text in your response - only the JSON.
