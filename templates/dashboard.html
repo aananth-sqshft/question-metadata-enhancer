@@ -125,8 +125,9 @@
                 </div>
                 <div class="modal-footer">
                     <span id="modalFilename" class="me-auto text-muted"></span>
+                    <a id="modalMetadataLink" href="#" class="btn btn-secondary">View Details</a>
                     <a id="modalReviewLink" href="#" class="btn btn-primary">Review OCR</a>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -168,6 +169,9 @@
                                     </button>
                                     <a href="/ocr/review/{{ image }}" class="btn btn-sm btn-outline-info review-btn" style="display: none;">
                                         Review
+                                    </a>
+                                    <a href="/metadata/view/{{ image }}" class="btn btn-sm btn-outline-secondary view-metadata-btn">
+                                        View Details
                                     </a>
                                 </div>
                             </td>
@@ -367,6 +371,7 @@
         const modalImage = document.getElementById('modalImage');
         const modalFilename = document.getElementById('modalFilename');
         const modalReviewLink = document.getElementById('modalReviewLink');
+        const modalMetadataLink = document.getElementById('modalMetadataLink');
         
         // Add click event to all question image previews
         document.querySelectorAll('.question-image-preview').forEach(img => {
@@ -378,6 +383,7 @@
                 modalImage.src = imageSrc;
                 modalFilename.textContent = filename;
                 modalReviewLink.href = `/ocr/review/${filename}`;
+                modalMetadataLink.href = `/metadata/view/${filename}`;
                 
                 // Show modal
                 imageModal.show();

@@ -102,13 +102,14 @@ def process_ocr():
     """Process images with OCR"""
     data = request.get_json()
     filenames = data.get('filenames', [])
+    force_reprocess = data.get('force_reprocess', False)
     
     if not filenames:
         # Process all images if none specified
         filenames = ocr_processor.get_image_list()
     
     # Process the images
-    results = ocr_processor.process_batch(filenames)
+    results = ocr_processor.process_batch(filenames, force_reprocess=force_reprocess)
     
     return jsonify({
         'success': True,
@@ -261,6 +262,24 @@ def ocr_review(filename):
 def metadata_review(filename):
     """Page for reviewing enhanced metadata"""
     return render_template('metadata_review.html', filename=filename)
+
+@app.route('/metadata/view/<filename>')
+def metadata_view(filename):
+    """Page for viewing all details about a question, including OCR results and metadata"""
+    # Get OCR results and metadata
+    ocr_result = ocr_processor.process_image(filename, force_reprocess=False)
+    metadata = metadata_manager.get_metadata_for_image(filename)
+    
+    # Determine if the question has been processed
+    processed = ocr_result.get('success', False)
+    
+    return render_template(
+        'metadata_view.html', 
+        filename=filename, 
+        ocr_result=ocr_result, 
+        metadata=metadata, 
+        processed=processed
+    )
 
 @app.route('/test-css')
 def test_css():

@@ -38,12 +38,13 @@ class OCRProcessor:
         return [f for f in os.listdir(self.images_dir) 
                 if f.startswith("question_") and f.lower().endswith('.png')]
     
-    def process_image(self, image_filename):
+    def process_image(self, image_filename, force_reprocess=False):
         """
         Perform OCR on a single image.
         
         Args:
             image_filename (str): Filename of the image to process
+            force_reprocess (bool): Whether to force reprocessing even if results exist
             
         Returns:
             dict: Dictionary containing the OCR results and metadata
@@ -87,13 +88,14 @@ class OCRProcessor:
             logger.error(error_msg)
             return result
     
-    def process_batch(self, image_filenames=None):
+    def process_batch(self, image_filenames=None, force_reprocess=False):
         """
         Process a batch of images.
         
         Args:
             image_filenames (list, optional): List of filenames to process.
                 If None, all images in the directory will be processed.
+            force_reprocess (bool): Whether to force reprocessing even if results exist
                 
         Returns:
             list: List of dictionaries containing OCR results for each image
@@ -104,7 +106,7 @@ class OCRProcessor:
         results = []
         for filename in image_filenames:
             logger.info(f"Processing {filename}...")
-            result = self.process_image(filename)
+            result = self.process_image(filename, force_reprocess=force_reprocess)
             results.append(result)
         
         return results
