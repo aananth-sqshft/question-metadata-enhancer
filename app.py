@@ -3,6 +3,9 @@ import os
 import json
 import logging
 from flask import Flask, render_template, request, jsonify, send_from_directory
+# Import config
+from config import QUESTION_FOLDER, METADATA_FILE, LLM_API_TYPE, DEBUG
+
 
 # Import modules
 from modules.ocr_processor import OCRProcessor
@@ -18,11 +21,6 @@ logger = logging.getLogger(__name__)
 
 # Initialize Flask app
 app = Flask(__name__)
-
-# Configuration - could be moved to a config file
-QUESTION_FOLDER = 'question_images'  # Path to snipped question images
-METADATA_FILE = 'question_metadata.json'  # Path to metadata file
-LLM_API_TYPE = 'openai'  # or 'anthropic'
 
 # Ensure directories exist
 if not os.path.exists(QUESTION_FOLDER):
@@ -172,6 +170,5 @@ def metadata_review(filename):
     return render_template('metadata_review.html', filename=filename)
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001)  # Different port from extractor
+    app.run(debug=DEBUG, host='0.0.0.0', port=5001)  # Different port from extractor
 
-    
