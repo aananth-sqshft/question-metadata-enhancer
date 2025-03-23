@@ -1,0 +1,101 @@
+/* static/css/main.css */
+
+/* Global Styles */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+    color: #333;
+}
+
+.container {
+    max-width: 1280px;
+}
+
+/* Card improvements */
+.card {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.card-header {
+    font-weight: 600;
+}
+
+/* Status badges */
+.status-badge {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Tables */
+.table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f0f7ff;
+}
+
+/* Image thumbnails */
+.img-thumbnail {
+    border-radius: 4px;
+    object-fit: contain;
+}
+
+/* Button improvements */
+.btn-group {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Forms */
+.form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+label {
+    font-weight: 500;
+    margin-bottom: 0.3rem;
+}
+
+/* Custom utility classes */
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* Progress bar tweaks */
+.progress {
+    height: 0.8rem;
+    border-radius: 0.5rem;
+}
+
+/* Alert improvements */
+.alert {
+    border-left-width: 4px;
+}
+
+/* Dashboard stats */
+.stats-card h2 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+}
+
+.stats-card p {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 0;
+}
+
+/* Form group spacing */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+/* Footer */
+footer {
+    margin-top: 2rem;
+    font-size: 0.85rem;
+}
+

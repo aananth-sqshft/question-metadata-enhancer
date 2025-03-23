@@ -1,0 +1,296 @@
+<!-- templates/dashboard.html -->
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Question Metadata Enhancer{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1>Question Analysis Dashboard</h1>
+        <p class="lead">Process and enhance question image metadata with OCR and AI analysis.</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <button id="processAllBtn" class="btn btn-primary">Process All Questions</button>
+                    <button id="processSelectedBtn" class="btn btn-outline-primary" disabled>Process Selected</button>
+                </div>
+                <div class="progress d-none" id="batchProgress">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                </div>
+                <div id="batchStatus" class="mt-2"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0">Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col">
+                        <h2 id="totalQuestions">{{ images|length }}</h2>
+                        <p>Total Questions</p>
+                    </div>
+                    <div class="col">
+                        <h2 id="processedQuestions">0</h2>
+                        <p>Processed</p>
+                    </div>
+                    <div class="col">
+                        <h2 id="pendingQuestions">{{ images|length }}</h2>
+                        <p>Pending</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Question Images</h5>
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="toggleSelectAll">
+            <label class="form-check-label text-white" for="toggleSelectAll">Select All</label>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if images %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;"></th>
+                            <th style="width: 80px;">Preview</th>
+                            <th>Filename</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for image in images %}
+                        <tr data-filename="{{ image }}">
+                            <td>
+                                <div class="form-check">
+                                    <input class="form-check-input question-select" type="checkbox" value="{{ image }}">
+                                </div>
+                            </td>
+                            <td>
+                                <img src="/images/{{ image }}" class="img-thumbnail" alt="{{ image }}" style="max-height: 60px;">
+                            </td>
+                            <td>{{ image }}</td>
+                            <td>
+                                <span class="badge bg-secondary status-badge">Not Processed</span>
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-primary process-btn" data-filename="{{ image }}">
+                                        Process
+                                    </button>
+                                    <a href="/ocr/review/{{ image }}" class="btn btn-sm btn-outline-info review-btn" style="display: none;">
+                                        Review
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                No question images found. Use the Question Extractor tool to create question images first.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Toggle select all questions
+        const selectAllToggle = document.getElementById('toggleSelectAll');
+        const questionCheckboxes = document.querySelectorAll('.question-select');
+        const processSelectedBtn = document.getElementById('processSelectedBtn');
+        
+        selectAllToggle.addEventListener('change', function() {
+            const isChecked = this.checked;
+            questionCheckboxes.forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+            updateSelectedButton();
+        });
+        
+        questionCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateSelectedButton);
+        });
+        
+        function updateSelectedButton() {
+            const selectedCount = document.querySelectorAll('.question-select:checked').length;
+            processSelectedBtn.disabled = selectedCount === 0;
+            if (selectedCount > 0) {
+                processSelectedBtn.textContent = `Process Selected (${selectedCount})`;
+            } else {
+                processSelectedBtn.textContent = 'Process Selected';
+            }
+        }
+        
+        // Process individual question
+        const processButtons = document.querySelectorAll('.process-btn');
+        processButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const filename = this.getAttribute('data-filename');
+                processQuestion(filename);
+            });
+        });
+        
+        // Process all questions
+        const processAllBtn = document.getElementById('processAllBtn');
+        processAllBtn.addEventListener('click', function() {
+            const allFilenames = Array.from(document.querySelectorAll('tr[data-filename]'))
+                .map(row => row.getAttribute('data-filename'));
+            processBatch(allFilenames);
+        });
+        
+        // Process selected questions
+        processSelectedBtn.addEventListener('click', function() {
+            const selectedFilenames = Array.from(document.querySelectorAll('.question-select:checked'))
+                .map(checkbox => checkbox.value);
+            processBatch(selectedFilenames);
+        });
+        
+        function processQuestion(filename) {
+            updateQuestionStatus(filename, 'processing');
+            
+            fetch('/ocr/result/' + filename)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.ocr_result.success) {
+                        updateQuestionStatus(filename, 'processed');
+                        enableReviewButton(filename);
+                        updateStatistics();
+                    } else {
+                        updateQuestionStatus(filename, 'error', data.ocr_result.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error processing question:', error);
+                    updateQuestionStatus(filename, 'error', 'Network error');
+                });
+        }
+        
+        function processBatch(filenames) {
+            if (filenames.length === 0) return;
+            
+            const progressBar = document.querySelector('#batchProgress .progress-bar');
+            const batchProgress = document.getElementById('batchProgress');
+            const batchStatus = document.getElementById('batchStatus');
+            
+            batchProgress.classList.remove('d-none');
+            progressBar.style.width = '0%';
+            batchStatus.textContent = `Processing 0/${filenames.length} questions...`;
+            
+            let processed = 0;
+            
+            fetch('/ocr/process', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ filenames: filenames })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    data.results.forEach(result => {
+                        if (result.success) {
+                            updateQuestionStatus(result.filename, 'processed');
+                            enableReviewButton(result.filename);
+                        } else {
+                            updateQuestionStatus(result.filename, 'error', result.error);
+                        }
+                    });
+                    
+                    batchStatus.textContent = `Processed ${data.processed} questions.`;
+                    progressBar.style.width = '100%';
+                    
+                    setTimeout(() => {
+                        batchProgress.classList.add('d-none');
+                    }, 3000);
+                    
+                    updateStatistics();
+                } else {
+                    batchStatus.textContent = 'Error processing batch: ' + data.error;
+                }
+            })
+            .catch(error => {
+                console.error('Error processing batch:', error);
+                batchStatus.textContent = 'Network error processing batch.';
+            });
+        }
+        
+        function updateQuestionStatus(filename, status, errorMsg = null) {
+            const row = document.querySelector(`tr[data-filename="${filename}"]`);
+            if (!row) return;
+            
+            const statusBadge = row.querySelector('.status-badge');
+            
+            statusBadge.classList.remove('bg-secondary', 'bg-warning', 'bg-success', 'bg-danger');
+            
+            switch(status) {
+                case 'processing':
+                    statusBadge.classList.add('bg-warning');
+                    statusBadge.textContent = 'Processing...';
+                    break;
+                case 'processed':
+                    statusBadge.classList.add('bg-success');
+                    statusBadge.textContent = 'Processed';
+                    break;
+                case 'error':
+                    statusBadge.classList.add('bg-danger');
+                    statusBadge.textContent = 'Error';
+                    statusBadge.setAttribute('title', errorMsg || 'Unknown error');
+                    break;
+                default:
+                    statusBadge.classList.add('bg-secondary');
+                    statusBadge.textContent = 'Not Processed';
+            }
+        }
+        
+        function enableReviewButton(filename) {
+            const row = document.querySelector(`tr[data-filename="${filename}"]`);
+            if (!row) return;
+            
+            const processBtn = row.querySelector('.process-btn');
+            const reviewBtn = row.querySelector('.review-btn');
+            
+            processBtn.classList.add('btn-outline-secondary');
+            processBtn.classList.remove('btn-outline-primary');
+            reviewBtn.style.display = 'inline-block';
+        }
+        
+        function updateStatistics() {
+            const totalQuestions = document.querySelectorAll('tr[data-filename]').length;
+            const processedQuestions = document.querySelectorAll('.status-badge.bg-success').length;
+            const pendingQuestions = totalQuestions - processedQuestions;
+            
+            document.getElementById('totalQuestions').textContent = totalQuestions;
+            document.getElementById('processedQuestions').textContent = processedQuestions;
+            document.getElementById('pendingQuestions').textContent = pendingQuestions;
+        }
+        
+        // Initialize statistics
+        updateStatistics();
+    });
+</script>
+{% endblock %}
+
