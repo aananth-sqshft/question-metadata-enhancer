@@ -8,6 +8,11 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentOcrText = '';
     let existingMetadata = null;
     let enhancedMetadata = null;
+    let currentPrompt = '';
+    let customPrompt = null;
+    
+    // Initialize Bootstrap modal
+    const promptModal = new bootstrap.Modal(document.getElementById('promptModal'));
     
     // Load OCR results and metadata
     loadOcrResult();
@@ -20,6 +25,21 @@ document.addEventListener('DOMContentLoaded', function() {
     
     document.getElementById('reprocessBtn').addEventListener('click', function() {
         loadOcrResult(true);
+    });
+    
+    document.getElementById('viewPromptBtn').addEventListener('click', function() {
+        loadPrompt();
+    });
+    
+    document.getElementById('savePromptBtn').addEventListener('click', function() {
+        customPrompt = document.getElementById('llmPrompt').value;
+        promptModal.hide();
+    });
+    
+    document.getElementById('analyzeWithCustomPromptBtn').addEventListener('click', function() {
+        customPrompt = document.getElementById('llmPrompt').value;
+        promptModal.hide();
+        submitForAnalysis(true); // Pass true to use custom prompt
     });
     
     document.getElementById('editMetadataBtn').addEventListener('click', function() {
@@ -151,8 +171,55 @@ document.addEventListener('DOMContentLoaded', function() {
         return value;
     }
     
+    // Load the LLM prompt for preview/editing
+    function loadPrompt() {
+        const ocrText = document.getElementById('ocrText').value.trim();
+        
+        if (!ocrText) {
+            alert('Please provide OCR text to generate a prompt.');
+            return;
+        }
+        
+        // If we already have a custom prompt, just show it
+        if (customPrompt) {
+            document.getElementById('llmPrompt').value = customPrompt;
+            promptModal.show();
+            return;
+        }
+        
+        // Show loading in the textarea
+        const promptTextarea = document.getElementById('llmPrompt');
+        promptTextarea.value = 'Loading prompt...';
+        promptModal.show();
+        
+        // Get the prompt from the backend
+        fetch('/llm/prompt', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                filename: filename,
+                ocr_text: ocrText
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                currentPrompt = data.prompt;
+                promptTextarea.value = currentPrompt;
+            } else {
+                throw new Error(data.error || 'Failed to generate prompt');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading prompt:', error);
+            promptTextarea.value = 'Error loading prompt: ' + error.message;
+        });
+    }
+    
     // Submit OCR text for LLM analysis
-    function submitForAnalysis() {
+    function submitForAnalysis(useCustomPrompt = false) {
         const ocrText = document.getElementById('ocrText').value.trim();
         
         if (!ocrText) {
@@ -166,16 +233,24 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('metadataPreviewContainer').style.display = 'none';
         document.getElementById('metadataEditContainer').style.display = 'none';
         
+        // Prepare the request payload
+        const payload = {
+            filename: filename,
+            ocr_text: ocrText
+        };
+        
+        // If using custom prompt, add it to payload
+        if (useCustomPrompt && customPrompt) {
+            payload.custom_prompt = customPrompt;
+        }
+        
         // Call the LLM analysis API
         fetch('/llm/analyze', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                filename: filename,
-                ocr_text: ocrText
-            })
+            body: JSON.stringify(payload)
         })
         .then(response => response.json())
         .then(data => {

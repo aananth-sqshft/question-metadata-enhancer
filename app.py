@@ -129,9 +129,9 @@ def get_ocr_result(filename):
         'metadata': metadata
     })
 
-@app.route('/llm/analyze', methods=['POST'])
-def analyze_with_llm():
-    """Analyze OCR text with LLM"""
+@app.route('/llm/prompt', methods=['POST'])
+def get_llm_prompt():
+    """Generate and return the LLM prompt for preview/editing"""
     data = request.get_json()
     filename = data.get('filename')
     ocr_text = data.get('ocr_text', '')
@@ -145,8 +145,41 @@ def analyze_with_llm():
     # Get existing metadata
     existing_metadata = metadata_manager.get_metadata_for_image(filename)
     
-    # Call LLM for analysis
-    enhanced_metadata = llm_processor.analyze_question(ocr_text, existing_metadata)
+    # Generate prompt (without calling the LLM)
+    metadata_str = llm_processor._format_metadata(existing_metadata) if existing_metadata else "No existing metadata."
+    prompt = llm_processor._create_prompt(ocr_text, metadata_str)
+    
+    return jsonify({
+        'success': True,
+        'prompt': prompt,
+        'filename': filename
+    })
+
+@app.route('/llm/analyze', methods=['POST'])
+def analyze_with_llm():
+    """Analyze OCR text with LLM"""
+    data = request.get_json()
+    filename = data.get('filename')
+    ocr_text = data.get('ocr_text', '')
+    custom_prompt = data.get('custom_prompt', None)
+    
+    if not filename or not ocr_text:
+        return jsonify({
+            'success': False,
+            'error': 'Filename and OCR text required'
+        }), 400
+    
+    # Get existing metadata
+    existing_metadata = metadata_manager.get_metadata_for_image(filename)
+    
+    # Call LLM for analysis with optional custom prompt
+    if custom_prompt:
+        # Use custom prompt directly
+        response = llm_processor._call_anthropic(custom_prompt) if llm_processor.api_type == 'anthropic' else llm_processor._call_openai(custom_prompt)
+        enhanced_metadata = llm_processor._parse_response(response)
+    else:
+        # Use the standard analyze_question flow
+        enhanced_metadata = llm_processor.analyze_question(ocr_text, existing_metadata)
     
     # Improved error handling
     success = True

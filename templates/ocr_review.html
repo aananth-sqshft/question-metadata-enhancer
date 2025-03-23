@@ -31,6 +31,30 @@
             </div>
         </div>
         
+        <!-- Prompt Modal -->
+        <div class="modal fade" id="promptModal" tabindex="-1" aria-labelledby="promptModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title" id="promptModalLabel">LLM Prompt</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="llmPrompt" class="form-label">Edit the prompt that will be sent to the LLM:</label>
+                            <textarea id="llmPrompt" class="form-control" rows="20" style="font-family: monospace; font-size: 14px;"></textarea>
+                            <div class="form-text mt-2">You can customize the prompt to instruct the LLM more specifically. Any changes made here will be used for the next analysis run.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="savePromptBtn">Save Changes</button>
+                        <button type="button" class="btn btn-success" id="analyzeWithCustomPromptBtn">Analyze with Custom Prompt</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <div class="card mb-4">
             <div class="card-header bg-info text-white">
                 <h5 class="card-title mb-0">Existing Metadata</h5>
@@ -75,9 +99,14 @@
                             <button type="button" id="reprocessBtn" class="btn btn-outline-secondary">
                                 <i class="bi bi-arrow-repeat"></i> Reprocess OCR
                             </button>
-                            <button type="submit" id="submitToLLMBtn" class="btn btn-primary">
-                                Submit for LLM Analysis
-                            </button>
+                            <div>
+                                <button type="button" id="viewPromptBtn" class="btn btn-outline-primary me-2">
+                                    <i class="bi bi-eye"></i> View/Edit Prompt
+                                </button>
+                                <button type="submit" id="submitToLLMBtn" class="btn btn-primary">
+                                    Submit for LLM Analysis
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>
