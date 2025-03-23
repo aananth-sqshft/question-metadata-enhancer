@@ -183,7 +183,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 enhancedMetadata = data.metadata;
                 displayMetadataPreview(enhancedMetadata);
             } else {
-                throw new Error(data.error || 'Unknown error during LLM analysis');
+                let errorMessage = data.error || 'Unknown error during LLM analysis';
+                console.error('LLM Analysis Error:', errorMessage);
+                if (data.metadata && data.metadata.detailed_error) {
+                    console.error('Detailed error:', data.metadata.detailed_error);
+                }
+                throw new Error(errorMessage);
             }
         })
         .catch(error => {

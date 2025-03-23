@@ -148,8 +148,21 @@ def analyze_with_llm():
     # Call LLM for analysis
     enhanced_metadata = llm_processor.analyze_question(ocr_text, existing_metadata)
     
+    # Improved error handling
+    success = True
+    error_message = None
+    
+    if 'error' in enhanced_metadata:
+        success = False
+        error_message = enhanced_metadata.get('error', 'Unknown error during LLM analysis')
+        app.logger.error(f"LLM analysis error for {filename}: {error_message}")
+        # Add additional context if available
+        if 'raw_response' in enhanced_metadata:
+            app.logger.debug(f"Raw response: {enhanced_metadata['raw_response']}")
+    
     return jsonify({
-        'success': 'error' not in enhanced_metadata,
+        'success': success,
+        'error': error_message,
         'metadata': enhanced_metadata,
         'filename': filename
     })

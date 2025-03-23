@@ -78,7 +78,18 @@ class LLMProcessor:
         except Exception as e:
             error_msg = f"LLM analysis failed: {str(e)}"
             logger.error(error_msg)
-            return {'error': error_msg}
+            
+            # Add more detailed information based on exception type
+            if 'anthropic-version' in str(e).lower():
+                error_msg = "API version error: The Anthropic API version header might be incorrect. Please update your API version or check your credentials."
+            elif 'api key' in str(e).lower() or 'apikey' in str(e).lower() or 'authentication' in str(e).lower():
+                error_msg = "Authentication error: Please check your Anthropic API key is correctly set in the environment variables."
+            elif 'model' in str(e).lower():
+                error_msg = "Model error: The requested AI model may be invalid or unavailable. Please check your model configuration."
+            elif 'timeout' in str(e).lower() or 'connection' in str(e).lower():
+                error_msg = "Connection error: Unable to connect to the LLM service. Please check your internet connection and try again."
+            
+            return {'error': error_msg, 'detailed_error': str(e)}
     
     def _format_metadata(self, metadata):
         """
@@ -198,11 +209,27 @@ Do not include any other text in your response - only the JSON.
                     model="claude-3-opus-20240229",  # Or other available Claude models
                     max_tokens=1000,
                     temperature=0.3,
+                    system="You are an expert in educational assessment and metadata generation.",
                     messages=[
                         {"role": "user", "content": prompt}
                     ]
                 )
-                return message.content[0].text
+                # Check SDK version to handle different response formats
+                try:
+                    return message.content[0].text
+                except (AttributeError, IndexError):
+                    # Older SDK version might have a different structure
+                    if hasattr(message, 'completion'):
+                        return message.completion
+                    elif hasattr(message, 'content'):
+                        if isinstance(message.content, str):
+                            return message.content
+                        elif isinstance(message.content, list):
+                            for content_block in message.content:
+                                if hasattr(content_block, 'text'):
+                                    return content_block.text
+                        # Last resort fallback
+                        return str(message.content)
             except Exception as e:
                 logger.error(f"Anthropic SDK error: {str(e)}")
                 logger.info("Falling back to direct API call")
