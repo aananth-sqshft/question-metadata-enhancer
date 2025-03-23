@@ -91,8 +91,21 @@ class MetadataManager:
                 break
         
         if not updated:
-            logger.warning(f"No metadata entry found for {image_filename}")
-            return False
+            # Create a new entry if none exists
+            logger.info(f"Creating new metadata entry for {image_filename}")
+            new_entry = {'filename': image_filename}
+            
+            # Update with enhanced metadata
+            for key, value in enhanced_metadata.items():
+                new_entry[key] = value
+                
+            # Add creation timestamp
+            new_entry['created'] = datetime.datetime.now().isoformat()
+            new_entry['last_updated'] = new_entry['created']
+            
+            # Add to metadata list
+            metadata_list.append(new_entry)
+            updated = True
         
         # Save the updated metadata
         return self._save_metadata(metadata_list)
