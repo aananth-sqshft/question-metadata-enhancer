@@ -82,6 +82,9 @@
                     <button id="toggleReviewBtn" class="btn btn-warning" data-completed="true">
                         <i class="bi bi-arrow-return-left"></i> Return to Review Queue
                     </button>
+                    <button id="saveToDbBtn" class="btn btn-primary">
+                        <i class="bi bi-database-add"></i> Save to Database
+                    </button>
                     {% else %}
                     <button id="toggleReviewBtn" class="btn btn-success" data-completed="false">
                         <i class="bi bi-check-circle"></i> Mark Review as Completed
@@ -223,6 +226,16 @@
         const filename = '{{ filename }}';
         const processingModal = new bootstrap.Modal(document.getElementById('processingModal'));
         
+        // Helper function to forcefully close the modal
+        function forceCloseModal() {
+            processingModal.hide();
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('padding-right');
+            document.body.style.removeProperty('overflow');
+            document.getElementById('processingModal').style.display = 'none';
+        }
+        
         // Process with OCR button
         const processBtn = document.getElementById('processBtn');
         if (processBtn) {
@@ -243,7 +256,9 @@
                 })
                 .then(response => response.json())
                 .then(data => {
+                    // Make sure to hide the modal
                     processingModal.hide();
+                    document.querySelector('.modal-backdrop')?.remove();
                     
                     if (data.success) {
                         // Reload page to show updated content
@@ -253,7 +268,10 @@
                     }
                 })
                 .catch(error => {
+                    // Make sure to hide the modal
                     processingModal.hide();
+                    document.querySelector('.modal-backdrop')?.remove();
+                    
                     console.error('Error processing image:', error);
                     alert('Network error while processing image');
                 });
@@ -281,7 +299,9 @@
                 })
                 .then(response => response.json())
                 .then(data => {
+                    // Make sure to hide the modal
                     processingModal.hide();
+                    document.querySelector('.modal-backdrop')?.remove();
                     
                     if (data.success) {
                         // Reload page to show updated content
@@ -291,7 +311,10 @@
                     }
                 })
                 .catch(error => {
+                    // Make sure to hide the modal
                     processingModal.hide();
+                    document.querySelector('.modal-backdrop')?.remove();
+                    
                     console.error('Error reprocessing image:', error);
                     alert('Network error while reprocessing image');
                 });
@@ -322,7 +345,9 @@
                 })
                 .then(response => response.json())
                 .then(data => {
+                    // Make sure to hide the modal
                     processingModal.hide();
+                    document.querySelector('.modal-backdrop')?.remove();
                     
                     if (data.success) {
                         // Reload page to show updated content
@@ -332,9 +357,56 @@
                     }
                 })
                 .catch(error => {
+                    // Make sure to hide the modal
                     processingModal.hide();
+                    document.querySelector('.modal-backdrop')?.remove();
+                    
                     console.error('Error updating review status:', error);
                     alert('Network error while updating review status');
+                });
+            });
+        }
+        
+        // Save to Database button
+        const saveToDbBtn = document.getElementById('saveToDbBtn');
+        if (saveToDbBtn) {
+            saveToDbBtn.addEventListener('click', function() {
+                // Show processing modal
+                document.getElementById('processingMessage').textContent = 'Saving to database...';
+                processingModal.show();
+                
+                // Call the database save API
+                fetch('/database/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        filename: filename
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Force close any open modals with a slight delay to ensure elements are fully rendered
+                    setTimeout(function() {
+                        forceCloseModal();
+                        
+                        if (data.success) {
+                            // Show success message
+                            alert('Successfully saved to database!');
+                        } else {
+                            alert('Error saving to database: ' + (data.error || 'Unknown error'));
+                        }
+                    }, 100);
+                })
+                .catch(error => {
+                    // Force close any open modals with a slight delay
+                    setTimeout(function() {
+                        forceCloseModal();
+                        
+                        console.error('Error saving to database:', error);
+                        alert('Network error while saving to database');
+                    }, 100);
                 });
             });
         }
@@ -373,7 +445,9 @@
                         return response.json();
                     })
                     .then(data => {
+                        // Make sure to hide the modal
                         processingModal.hide();
+                        document.querySelector('.modal-backdrop')?.remove();
                         
                         if (!data) return;
                         
@@ -408,7 +482,10 @@
                         }
                     })
                     .catch(error => {
+                        // Make sure to hide the modal
                         processingModal.hide();
+                        document.querySelector('.modal-backdrop')?.remove();
+                        
                         console.error('Error during analysis:', error);
                         alert('Network error during analysis');
                     });

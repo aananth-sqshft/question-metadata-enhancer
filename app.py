@@ -4,13 +4,14 @@ import json
 import logging
 from flask import Flask, render_template, request, jsonify, send_from_directory
 # Import config
-from config import QUESTION_FOLDER, METADATA_FILE, LLM_API_TYPE, DEBUG, ANTHROPIC_API_KEY
+from config import QUESTION_FOLDER, METADATA_FILE, DB_FILE, LLM_API_TYPE, DEBUG, ANTHROPIC_API_KEY
 
 
 # Import modules
 from modules.ocr_processor import OCRProcessor
 from modules.llm_processor import LLMProcessor
 from modules.metadata_manager import MetadataManager
+from modules.database_manager import DatabaseManager
 
 # Add this near the top of your app.py after loading configuration
 print(f"[DEBUG] QUESTION_FOLDER value: '{QUESTION_FOLDER}'")
@@ -43,6 +44,7 @@ if not os.path.exists(QUESTION_FOLDER):
 ocr_processor = OCRProcessor(QUESTION_FOLDER)
 llm_processor = LLMProcessor(LLM_API_TYPE)
 metadata_manager = MetadataManager(METADATA_FILE)
+database_manager = DatabaseManager(DB_FILE)
 
 # Routes
 @app.route('/')
@@ -315,6 +317,59 @@ def toggle_review_completion(filename):
         'success': success,
         'filename': filename,
         'review_completed': completed
+    })
+
+@app.route('/database/save', methods=['POST'])
+def save_to_database():
+    """Save a review-completed question to the SQLite database"""
+    data = request.get_json()
+    filename = data.get('filename')
+    
+    if not filename:
+        return jsonify({
+            'success': False,
+            'error': 'Filename is required'
+        }), 400
+    
+    # Get the metadata for this question
+    metadata = metadata_manager.get_metadata_for_image(filename)
+    
+    if not metadata:
+        return jsonify({
+            'success': False,
+            'error': 'Metadata not found for this question'
+        }), 404
+    
+    # Check if review is completed
+    if not metadata.get('review_completed', False):
+        return jsonify({
+            'success': False,
+            'error': 'Cannot save to database: review is not completed'
+        }), 400
+    
+    # Save to database
+    success = database_manager.save_question(metadata)
+    
+    return jsonify({
+        'success': success,
+        'filename': filename
+    })
+
+@app.route('/database/questions', methods=['GET'])
+def list_database_questions():
+    """List all questions stored in the database"""
+    # Option to filter by review status
+    review_completed = request.args.get('review_completed')
+    if review_completed is not None:
+        review_completed = review_completed.lower() == 'true'
+    
+    # Get questions from database
+    questions = database_manager.get_all_questions(review_completed)
+    
+    return jsonify({
+        'success': True,
+        'questions': [q.get('filename') for q in questions],
+        'count': len(questions)
     })
 
 @app.route('/test-css')

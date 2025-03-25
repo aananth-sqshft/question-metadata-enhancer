@@ -1,6 +1,7 @@
 # config.py
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
 # Load environment variables from .env file
 load_dotenv()
@@ -11,6 +12,9 @@ DEBUG = True
 # Path configuration
 QUESTION_FOLDER = os.getenv('QUESTION_FOLDER')  # Path to snipped question images
 METADATA_FILE = os.getenv('METADATA_FILE')  # Path to metadata file
+
+# Database configuration
+DB_FILE = os.getenv('DB_FILE', os.path.join(os.path.dirname(METADATA_FILE), 'questions.db'))
 
 # LLM API Configuration
 LLM_API_TYPE = 'anthropic'  # or 'openai'
